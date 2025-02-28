@@ -27,7 +27,7 @@
     pango
     webkitgtk_4_1
   ];
-  android.enable = true;
+  android.enable = false;
 
   # https://devenv.sh/languages/
   # languages.rust.enable = true;
