@@ -1,10 +1,7 @@
 use three::Three;
 
 use clap::Parser;
-use iced;
 use iroh_gossip::proto::TopicId;
-
-use three::front::app::*;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -31,26 +28,14 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Start GUI
-    //iced::application("Three- Iced", Three::update, Three::view)
-    //    //.font(icon::FONT)
-    //    //.subscription(Three::subscription)
-    //    //.theme(Three::theme)
-    //    .run_with(Three::new)
-    //    .expect("REASON")
-
     env_logger::init();
-
     let args = Args::parse();
-
-    // let three = Three::new();
-
     match args.command {
         Command::Run => iced::application(Three::title, Three::update, Three::view)
             .run_with(Three::new)
             .unwrap(),
-        // Command::Open { topic } => todo!(),
-        // Command::Join { ticket } => todo!(),
+        Command::Open { topic } => todo!(),
+        Command::Join { ticket } => todo!(),
         _ => {
             todo!()
         }
