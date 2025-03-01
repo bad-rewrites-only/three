@@ -1,8 +1,10 @@
-use crate::Three;
+use iced::Subscription;
 use iced::{
     Center, Element, color,
     widget::{Column, button, column, text},
 };
+
+use crate::Three;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {

@@ -1,18 +1,13 @@
 pub mod back;
 pub mod front;
 
-use crate::front::app;
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use bytes::Bytes;
 use ed25519_dalek::Signature;
 use futures::{SinkExt, Stream};
 use futures_lite::StreamExt;
-use iced::{
-    Subscription, Task,
-    stream::try_channel,
-    widget::{self},
-};
+use iced::{Subscription, Task, stream::try_channel};
 use iroh::{Endpoint, NodeAddr, PublicKey, SecretKey, protocol::Router};
 use iroh_blobs::net_protocol::Blobs;
 use iroh_gossip::{
@@ -20,6 +15,8 @@ use iroh_gossip::{
     proto::TopicId,
 };
 use serde::{Deserialize, Serialize};
+
+use front::app;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Three {
@@ -40,7 +37,8 @@ pub struct Topic {
 
 impl Three {
     pub fn new() -> (Self, Task<app::Message>) {
-        let name = "unset_username"; // TODO: add setter
+        let name = "username".into();
+
         let secret_key = Some(SecretKey::generate(rand::rngs::OsRng));
         let my_posts = vec![];
 
@@ -49,13 +47,13 @@ impl Three {
 
         (
             Self {
-                name: name.to_string(),
+                name,
                 secret_key,
                 my_posts,
                 follows,
                 peers,
             },
-            widget::focus_next(),
+            Task::none(),
         )
     }
 }
@@ -84,24 +82,6 @@ async fn iroh_init(secret_key: Box<SecretKey>) -> anyhow::Result<()> {
     println!("> ticket to join us: {ticket}");
 
     let node_id = router.endpoint().node_id();
-
-    // // let peer_ids = peers.iter().map(|p| p.node_id).collect();
-    // let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
-
-    // tokio::task::spawn(subscribe_loop(receiver));
-
-    // // spawn an input thread that reads stdin
-    // // not using tokio here because they recommend this for "technical reasons"
-    // let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
-    // std::thread::spawn(move || input_loop(line_tx));
-
-    // println!("> type a message and hit enter to broadcast...");
-    // while let Some(text) = line_rx.recv().await {
-    //     // let message = Message::Post { text: text.clone() };
-    //     // let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
-    //     sender.broadcast(encoded_message).await?;
-    //     println!("> sent: {text}");
-    // }
 
     router.shutdown().await?;
 
@@ -144,59 +124,6 @@ impl FromStr for Ticket {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Message {
-    text: String,
-}
-// enum Message {
-//     About { name: String },
-//     Post { text: String },
-// }
-
-// fn subscribe_loop(
-//     mut receiver: GossipReceiver,
-// ) -> impl Stream<Item = Result<String, anyhow::Error>> {
-// init a peerid -> name hashmap
-// try_channel(1, move |mut output| async move {
-//     let event = receiver.try_next().await?;
-//     if let Some(iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg))) = event {
-//         let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
-//         let _ = output.send(message.text).await;
-//     }
-
-//     Ok(())
-// })
-
-// let mut names = HashMap::new();
-// while let Some(event) = receiver.try_next().await? {
-//     if let iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg)) = event {
-//         let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
-//         match message {
-//             Message::About { name } => {
-//                 names.insert(from, name.clone());
-//             }
-//             Message::Post { text } => {
-//                 let name = names
-//                     .get(&from)
-//                     .map_or_else(|| from.fmt_short(), String::to_string);
-//                 println!("{}: {}", name, text);
-//             }
-//         }
-//     }
-// }
-// Ok(())
-// }
-
-fn input_loop(line_tx: tokio::sync::mpsc::Sender<String>) -> anyhow::Result<()> {
-    let mut buffer = String::new();
-    let stdin = std::io::stdin(); // We get `Stdin` here.
-    loop {
-        stdin.read_line(&mut buffer)?;
-        line_tx.blocking_send(buffer.clone())?;
-        buffer.clear();
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 struct SignedMessage {
     from: PublicKey,
     data: Bytes,
@@ -204,15 +131,15 @@ struct SignedMessage {
 }
 
 impl SignedMessage {
-    pub fn verify_and_decode(bytes: &[u8]) -> anyhow::Result<(PublicKey, Message)> {
+    pub fn verify_and_decode(bytes: &[u8]) -> anyhow::Result<(PublicKey, Post)> {
         let signed_message: Self = postcard::from_bytes(bytes)?;
         let key: PublicKey = signed_message.from;
         key.verify(&signed_message.data, &signed_message.signature)?;
-        let message: Message = postcard::from_bytes(&signed_message.data)?;
+        let message: Post = postcard::from_bytes(&signed_message.data)?;
         Ok((signed_message.from, message))
     }
 
-    pub fn sign_and_encode(secret_key: &SecretKey, message: &Message) -> anyhow::Result<Bytes> {
+    pub fn sign_and_encode(secret_key: &SecretKey, message: &Post) -> anyhow::Result<Bytes> {
         let data: Bytes = postcard::to_stdvec(&message)?.into();
         let signature = secret_key.sign(&data);
         let from: PublicKey = secret_key.public();
@@ -225,3 +152,55 @@ impl SignedMessage {
         Ok(encoded.into())
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+enum Post {
+    About { name: String },
+    Post { text: String },
+}
+
+async fn refresh_topics(
+    receiver: &mut GossipReceiver,
+    followed: &mut HashMap<PublicKey, String>,
+    received: &mut HashMap<PublicKey, Vec<String>>,
+) -> anyhow::Result<()> {
+    while let Some(event) = receiver.try_next().await? {
+        if let iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg)) = event {
+            let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
+            match message {
+                Post::About { name } => {
+                    followed.insert(from, name);
+                }
+                Post::Post { text } => {
+                    let history = received.get_mut(&from).unwrap();
+                    let name = followed.get(&from).unwrap();
+                    println!("{}: {}", name, text);
+                    history.push(text);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+struct Feed {
+    receiver: GossipReceiver,
+    followed: HashMap<PublicKey, String>,
+    received: HashMap<PublicKey, Vec<String>>,
+}
+
+enum FeedMessage {
+    Refresh,
+}
+
+// impl Feed {
+//     fn new() -> (Self, Task<Post>) {
+//         (Self {}, Task::none())
+//     }
+
+//     fn update(&mut self, message: FeedMessage) -> Task<Post> {
+//         match message {
+//             FeedMessage::Refresh => Task::perform(refresh_topics(receiver, followed, received)),
+//         }
+//     }
+// }
