@@ -1,6 +1,6 @@
 use iced::Subscription;
 
-use crate::{Three, Topic};
+use crate::{Three, Topic, subscribe_loop};
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -19,6 +19,6 @@ impl Three {
 
 impl Topic {
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::run()
+        Subscription::run(subscribe_loop(self.receiver.unwrap()))
     }
 }

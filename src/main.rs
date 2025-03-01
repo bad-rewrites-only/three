@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let three = Three::new()?;
 
     match args.command {
-        Command::Run => {}
+        Command::Run => iced::run(three.title, three.update, three.view),
         // Command::Open { topic } => todo!(),
         // Command::Join { ticket } => todo!(),
         _ => {}

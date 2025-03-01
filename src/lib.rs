@@ -2,12 +2,13 @@ use std::{collections::HashMap, fmt, str::FromStr};
 
 use bytes::Bytes;
 use ed25519_dalek::Signature;
+use futures::{SinkExt, Stream};
 use futures_lite::StreamExt;
-use iced::Subscription;
+use iced::{Subscription, stream::try_channel};
 use iroh::{Endpoint, NodeAddr, PublicKey, SecretKey, protocol::Router};
 use iroh_blobs::net_protocol::Blobs;
 use iroh_gossip::{
-    net::{Gossip, GossipEvent, GossipReceiver},
+    net::{Event, Gossip, GossipEvent, GossipReceiver},
     proto::TopicId,
 };
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,9 @@ pub struct Three {
 #[derive(Serialize, Deserialize)]
 pub struct Topic {
     topic_id: TopicId,
+
+    #[serde(skip)]
+    receiver: Option<GossipReceiver>,
 }
 
 impl Three {
@@ -65,23 +69,23 @@ async fn iroh_init(secret_key: Box<SecretKey>) -> anyhow::Result<()> {
 
     let node_id = router.endpoint().node_id();
 
-    // let peer_ids = peers.iter().map(|p| p.node_id).collect();
-    let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
+    // // let peer_ids = peers.iter().map(|p| p.node_id).collect();
+    // let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
 
-    tokio::task::spawn(subscribe_loop(receiver));
+    // tokio::task::spawn(subscribe_loop(receiver));
 
-    // spawn an input thread that reads stdin
-    // not using tokio here because they recommend this for "technical reasons"
-    let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
-    std::thread::spawn(move || input_loop(line_tx));
+    // // spawn an input thread that reads stdin
+    // // not using tokio here because they recommend this for "technical reasons"
+    // let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
+    // std::thread::spawn(move || input_loop(line_tx));
 
-    println!("> type a message and hit enter to broadcast...");
-    while let Some(text) = line_rx.recv().await {
-        let message = Message::Post { text: text.clone() };
-        let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
-        sender.broadcast(encoded_message).await?;
-        println!("> sent: {text}");
-    }
+    // println!("> type a message and hit enter to broadcast...");
+    // while let Some(text) = line_rx.recv().await {
+    //     // let message = Message::Post { text: text.clone() };
+    //     // let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
+    //     sender.broadcast(encoded_message).await?;
+    //     println!("> sent: {text}");
+    // }
 
     router.shutdown().await?;
 
@@ -124,31 +128,46 @@ impl FromStr for Ticket {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum Message {
-    About { name: String },
-    Post { text: String },
+struct Message {
+    text: String,
 }
+// enum Message {
+//     About { name: String },
+//     Post { text: String },
+// }
 
-async fn subscribe_loop(mut receiver: GossipReceiver) -> anyhow::Result<()> {
+fn subscribe_loop(
+    mut receiver: GossipReceiver,
+) -> impl Stream<Item = Result<String, anyhow::Error>> {
     // init a peerid -> name hashmap
-    let mut names = HashMap::new();
-    while let Some(event) = receiver.try_next().await? {
-        if let iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg)) = event {
+    try_channel(1, move |mut output| async move {
+        let event = receiver.try_next().await?;
+        if let Some(iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg))) = event {
             let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
-            match message {
-                Message::About { name } => {
-                    names.insert(from, name.clone());
-                }
-                Message::Post { text } => {
-                    let name = names
-                        .get(&from)
-                        .map_or_else(|| from.fmt_short(), String::to_string);
-                    println!("{}: {}", name, text);
-                }
-            }
+            let _ = output.send(message.text).await;
         }
-    }
-    Ok(())
+
+        Ok(())
+    })
+
+    // let mut names = HashMap::new();
+    // while let Some(event) = receiver.try_next().await? {
+    //     if let iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg)) = event {
+    //         let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
+    //         match message {
+    //             Message::About { name } => {
+    //                 names.insert(from, name.clone());
+    //             }
+    //             Message::Post { text } => {
+    //                 let name = names
+    //                     .get(&from)
+    //                     .map_or_else(|| from.fmt_short(), String::to_string);
+    //                 println!("{}: {}", name, text);
+    //             }
+    //         }
+    //     }
+    // }
+    // Ok(())
 }
 
 fn input_loop(line_tx: tokio::sync::mpsc::Sender<String>) -> anyhow::Result<()> {
