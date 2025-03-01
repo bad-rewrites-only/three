@@ -1,8 +1,6 @@
 {
   pkgs,
   lib,
-  config,
-  inputs,
   ...
 }: rec {
   # https://devenv.sh/basics/
@@ -17,7 +15,6 @@
     libGL
     libxkbcommon
   ];
-  android.enable = false;
 
   # https://devenv.sh/languages/
   # languages.rust.enable = true;
