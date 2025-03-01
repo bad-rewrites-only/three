@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt, str::FromStr};
 use bytes::Bytes;
 use ed25519_dalek::Signature;
 use futures_lite::StreamExt;
+use iced::Subscription;
 use iroh::{Endpoint, NodeAddr, PublicKey, SecretKey, protocol::Router};
 use iroh_blobs::net_protocol::Blobs;
 use iroh_gossip::{
@@ -17,12 +18,25 @@ pub mod back;
 #[derive(Default, Serialize, Deserialize)]
 pub struct Three {
     pub secret_key: Option<SecretKey>,
+    follows: Vec<Topic>,
+    peers: Vec<NodeAddr>,
+    my_posts: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Topic {
+    topic_id: TopicId,
 }
 
 impl Three {
     pub fn new() -> anyhow::Result<Self> {
         let secret_key = Some(SecretKey::generate(rand::rngs::OsRng));
-        Ok(Self { secret_key })
+        let my_posts = vec![];
+
+        Ok(Self {
+            secret_key,
+            my_posts,
+        })
     }
 }
 
