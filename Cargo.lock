@@ -6995,7 +6995,6 @@ dependencies = [
  "dirs",
  "ed25519-dalek",
  "eframe",
- "egui",
  "env_logger",
  "futures",
  "futures-lite",
