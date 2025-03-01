@@ -37,9 +37,14 @@ impl Three {
         let secret_key = Some(SecretKey::generate(rand::rngs::OsRng));
         let my_posts = vec![];
 
+        let follows = vec![];
+        let peers = vec![];
+
         Ok(Self {
             secret_key,
             my_posts,
+            follows,
+            peers,
         })
     }
 }
@@ -136,39 +141,39 @@ struct Message {
 //     Post { text: String },
 // }
 
-fn subscribe_loop(
-    mut receiver: GossipReceiver,
-) -> impl Stream<Item = Result<String, anyhow::Error>> {
-    // init a peerid -> name hashmap
-    try_channel(1, move |mut output| async move {
-        let event = receiver.try_next().await?;
-        if let Some(iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg))) = event {
-            let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
-            let _ = output.send(message.text).await;
-        }
+// fn subscribe_loop(
+//     mut receiver: GossipReceiver,
+// ) -> impl Stream<Item = Result<String, anyhow::Error>> {
+// init a peerid -> name hashmap
+// try_channel(1, move |mut output| async move {
+//     let event = receiver.try_next().await?;
+//     if let Some(iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg))) = event {
+//         let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
+//         let _ = output.send(message.text).await;
+//     }
 
-        Ok(())
-    })
+//     Ok(())
+// })
 
-    // let mut names = HashMap::new();
-    // while let Some(event) = receiver.try_next().await? {
-    //     if let iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg)) = event {
-    //         let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
-    //         match message {
-    //             Message::About { name } => {
-    //                 names.insert(from, name.clone());
-    //             }
-    //             Message::Post { text } => {
-    //                 let name = names
-    //                     .get(&from)
-    //                     .map_or_else(|| from.fmt_short(), String::to_string);
-    //                 println!("{}: {}", name, text);
-    //             }
-    //         }
-    //     }
-    // }
-    // Ok(())
-}
+// let mut names = HashMap::new();
+// while let Some(event) = receiver.try_next().await? {
+//     if let iroh_gossip::net::Event::Gossip(GossipEvent::Received(msg)) = event {
+//         let (from, message) = SignedMessage::verify_and_decode(&msg.content)?;
+//         match message {
+//             Message::About { name } => {
+//                 names.insert(from, name.clone());
+//             }
+//             Message::Post { text } => {
+//                 let name = names
+//                     .get(&from)
+//                     .map_or_else(|| from.fmt_short(), String::to_string);
+//                 println!("{}: {}", name, text);
+//             }
+//         }
+//     }
+// }
+// Ok(())
+// }
 
 fn input_loop(line_tx: tokio::sync::mpsc::Sender<String>) -> anyhow::Result<()> {
     let mut buffer = String::new();
