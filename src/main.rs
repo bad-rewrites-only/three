@@ -79,54 +79,51 @@ enum Message {
     Post { text: String },
 }
 
-// #[tokio::main]
-// async
-fn main() -> anyhow::Result<()> {
-    // let app_state = ThreeApp::new().await?;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let secret_key = SecretKey::generate(rand::rngs::OsRng);
 
-    // let secret_key = SecretKey::generate(rand::rngs::OsRng);
+    let endpoint = Endpoint::builder()
+        .secret_key(secret_key)
+        .discovery_n0()
+        .bind()
+        .await?;
+    let blobs = Blobs::memory().build(&endpoint);
+    let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
+    let router = Router::builder(endpoint.clone())
+        .accept(iroh_blobs::ALPN, blobs.clone())
+        .accept(iroh_gossip::ALPN, gossip.clone())
+        .spawn()
+        .await?;
+    let blobs_client = blobs.client();
 
-    // let endpoint = Endpoint::builder()
-    //     .secret_key(secret_key)
-    //     .discovery_n0()
-    //     .bind()
-    //     .await?;
-    // let blobs = Blobs::memory().build(&endpoint);
-    // let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
-    // let router = Router::builder(endpoint.clone())
-    //     .accept(iroh_blobs::ALPN, blobs.clone())
-    //     .accept(iroh_gossip::ALPN, gossip.clone())
-    //     .spawn()
-    //     .await?;
-    // let blobs_client = blobs.client();
+    let topic = TopicId::from_bytes(rand::random());
+    let ticket = {
+        let me = endpoint.node_addr().await?;
+        let peers = vec![].iter().cloned().chain([me]).collect();
+        Ticket { topic, peers }
+    };
+    println!("> ticket to join us: {ticket}");
 
-    // let topic = TopicId::from_bytes(rand::random());
-    // let ticket = {
-    //     let me = endpoint.node_addr().await?;
-    //     let peers = vec![].iter().cloned().chain([me]).collect();
-    //     Ticket { topic, peers }
-    // };
-    // println!("> ticket to join us: {ticket}");
+    let node_id = router.endpoint().node_id();
 
-    // let node_id = router.endpoint().node_id();
+    // let peer_ids = peers.iter().map(|p| p.node_id).collect();
+    let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
 
-    // // let peer_ids = peers.iter().map(|p| p.node_id).collect();
-    // let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
+    tokio::task::spawn(subscribe_loop(receiver));
 
-    // tokio::task::spawn(subscribe_loop(receiver));
+    // spawn an input thread that reads stdin
+    // not using tokio here because they recommend this for "technical reasons"
+    let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
+    std::thread::spawn(move || input_loop(line_tx));
 
-    // // spawn an input thread that reads stdin
-    // // not using tokio here because they recommend this for "technical reasons"
-    // let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
-    // std::thread::spawn(move || input_loop(line_tx));
-
-    // println!("> type a message and hit enter to broadcast...");
-    // while let Some(text) = line_rx.recv().await {
-    //     let message = Message::Post { text: text.clone() };
-    //     let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
-    //     sender.broadcast(encoded_message).await?;
-    //     println!("> sent: {text}");
-    // }
+    println!("> type a message and hit enter to broadcast...");
+    while let Some(text) = line_rx.recv().await {
+        let message = Message::Post { text: text.clone() };
+        let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
+        sender.broadcast(encoded_message).await?;
+        println!("> sent: {text}");
+    }
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size((400.0, 400.0)),
