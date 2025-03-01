@@ -4,28 +4,18 @@
   config,
   inputs,
   ...
-}: {
+}: rec {
   # https://devenv.sh/basics/
-  # env.GREET = "devenv";
+  env.LD_LIBRARY_PATH = "${lib.makeLibraryPath packages}";
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
     pkg-config
 
-    xdotool
-    at-spi2-atk
-    atkmm
-    cairo
-    gdk-pixbuf
-    glib
-    gobject-introspection
-    gtk3
-    harfbuzz
-    librsvg
-    libsoup_3
+    wayland
     openssl
-    pango
-    webkitgtk_4_1
+    libGL
+    libxkbcommon
   ];
   android.enable = false;
 

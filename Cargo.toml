@@ -1,0 +1,11 @@
+[package]
+name = "three"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = { version = "0.31.0", features = ["default_fonts", "glow", "persistence"] }
+egui = "0.31.0"
+iroh = "0.33.0"
+iroh-blobs = "0.33.0"
+tokio = { version = "1.43.0", features = ["full"] }
