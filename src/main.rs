@@ -1,6 +1,7 @@
-use std::{collections::HashMap, fmt, str::FromStr};
+use std::{collections::HashMap, default, fmt, str::FromStr};
 
 use bytes::Bytes;
+use clap::Parser;
 use ed25519_dalek::Signature;
 use eframe::egui;
 use futures_lite::StreamExt;
@@ -11,32 +12,7 @@ use iroh_gossip::{
     proto::TopicId,
 };
 use serde::{Deserialize, Serialize};
-
-#[derive(Default)]
-struct ThreeApp {}
-
-impl ThreeApp {
-    fn name() -> &'static str {
-        "three"
-    }
-}
-
-impl eframe::App for ThreeApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.set_pixels_per_point(1.5);
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("This is a ui.heading. ");
-
-            ui.label("This is a ui.label");
-
-            // This literally creates the button AND checks to see if it was clicked
-            if ui.button("Quit").clicked() {
-                std::process::exit(0);
-            };
-        });
-    }
-}
+use three::app::ThreeApp;
 
 #[derive(Serialize, Deserialize)]
 struct Ticket {
@@ -77,68 +53,6 @@ impl FromStr for Ticket {
 enum Message {
     About { name: String },
     Post { text: String },
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let secret_key = SecretKey::generate(rand::rngs::OsRng);
-
-    let endpoint = Endpoint::builder()
-        .secret_key(secret_key)
-        .discovery_n0()
-        .bind()
-        .await?;
-    let blobs = Blobs::memory().build(&endpoint);
-    let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
-    let router = Router::builder(endpoint.clone())
-        .accept(iroh_blobs::ALPN, blobs.clone())
-        .accept(iroh_gossip::ALPN, gossip.clone())
-        .spawn()
-        .await?;
-    let blobs_client = blobs.client();
-
-    let topic = TopicId::from_bytes(rand::random());
-    let ticket = {
-        let me = endpoint.node_addr().await?;
-        let peers = vec![].iter().cloned().chain([me]).collect();
-        Ticket { topic, peers }
-    };
-    println!("> ticket to join us: {ticket}");
-
-    let node_id = router.endpoint().node_id();
-
-    // let peer_ids = peers.iter().map(|p| p.node_id).collect();
-    let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
-
-    tokio::task::spawn(subscribe_loop(receiver));
-
-    // spawn an input thread that reads stdin
-    // not using tokio here because they recommend this for "technical reasons"
-    let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
-    std::thread::spawn(move || input_loop(line_tx));
-
-    println!("> type a message and hit enter to broadcast...");
-    while let Some(text) = line_rx.recv().await {
-        let message = Message::Post { text: text.clone() };
-        let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
-        sender.broadcast(encoded_message).await?;
-        println!("> sent: {text}");
-    }
-
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size((400.0, 400.0)),
-        ..eframe::NativeOptions::default()
-    };
-    eframe::run_native(
-        ThreeApp::name(),
-        native_options,
-        Box::new(|_| Ok(Box::<ThreeApp>::default())),
-    )
-    .unwrap();
-
-    // TODO app_state.router.shutdown().await?;
-
-    Ok(())
 }
 
 async fn subscribe_loop(mut receiver: GossipReceiver) -> anyhow::Result<()> {
@@ -201,4 +115,100 @@ impl SignedMessage {
         let encoded = postcard::to_stdvec(&signed_message)?;
         Ok(encoded.into())
     }
+}
+
+#[derive(Parser, Debug)]
+struct Args {
+    #[clap(long)]
+    secret_key: Option<String>,
+    #[clap(short, long)]
+    name: Option<String>,
+
+    #[clap(subcommand)]
+    command: Command,
+}
+
+#[derive(Parser, Debug, Default)]
+enum Command {
+    #[default]
+    Run,
+    Open {
+        topic: Option<TopicId>,
+    },
+    Join {
+        ticket: String,
+    },
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    env_logger::init();
+
+    let args = Args::parse();
+
+    match args.command {
+        Command::Run => {
+            let native_options = eframe::NativeOptions {
+                viewport: egui::ViewportBuilder::default().with_inner_size((400.0, 400.0)),
+                ..eframe::NativeOptions::default()
+            };
+            eframe::run_native(
+                ThreeApp::name(),
+                native_options,
+                Box::new(|_| Ok(Box::<ThreeApp>::default())),
+            )
+            .unwrap();
+        }
+        // Command::Open { topic } => todo!(),
+        // Command::Join { ticket } => todo!(),
+        _ => {}
+    }
+
+    let secret_key = SecretKey::generate(rand::rngs::OsRng);
+
+    let endpoint = Endpoint::builder()
+        .secret_key(secret_key)
+        .discovery_n0()
+        .bind()
+        .await?;
+    let blobs = Blobs::memory().build(&endpoint);
+    let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
+    let router = Router::builder(endpoint.clone())
+        .accept(iroh_blobs::ALPN, blobs.clone())
+        .accept(iroh_gossip::ALPN, gossip.clone())
+        .spawn()
+        .await?;
+    // let blobs_client = blobs.client();
+
+    let topic = TopicId::from_bytes(rand::random());
+    let ticket = {
+        let me = endpoint.node_addr().await?;
+        let peers = vec![].iter().cloned().chain([me]).collect();
+        Ticket { topic, peers }
+    };
+    println!("> ticket to join us: {ticket}");
+
+    let node_id = router.endpoint().node_id();
+
+    // let peer_ids = peers.iter().map(|p| p.node_id).collect();
+    let (sender, receiver) = gossip.subscribe_and_join(topic, vec![]).await?.split();
+
+    tokio::task::spawn(subscribe_loop(receiver));
+
+    // spawn an input thread that reads stdin
+    // not using tokio here because they recommend this for "technical reasons"
+    let (line_tx, mut line_rx) = tokio::sync::mpsc::channel(1);
+    std::thread::spawn(move || input_loop(line_tx));
+
+    println!("> type a message and hit enter to broadcast...");
+    while let Some(text) = line_rx.recv().await {
+        let message = Message::Post { text: text.clone() };
+        let encoded_message = SignedMessage::sign_and_encode(endpoint.secret_key(), &message)?;
+        sender.broadcast(encoded_message).await?;
+        println!("> sent: {text}");
+    }
+
+    router.shutdown().await?;
+
+    Ok(())
 }
