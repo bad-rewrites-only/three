@@ -2,6 +2,7 @@ use three::Three;
 use three::front::app::*;
 
 use clap::Parser;
+use iced;
 use iroh_gossip::proto::TopicId;
 
 #[derive(Parser, Debug)]
@@ -29,6 +30,14 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Start GUI
+    //iced::application("Three- Iced", Three::update, Three::view)
+    //    //.font(icon::FONT)
+    //    //.subscription(Three::subscription)
+    //    //.theme(Three::theme)
+    //    .run_with(Three::new)
+    //    .expect("REASON")
+
     env_logger::init();
 
     let args = Args::parse();

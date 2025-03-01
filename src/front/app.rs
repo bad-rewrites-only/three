@@ -1,13 +1,29 @@
-use crate::{Three, Topic, subscribe_loop};
-use iced::Subscription;
+use crate::Three;
+use iced::{
+    Center, Element, color,
+    widget::{Column, button, column, text},
+};
 
-#[derive(Debug, Clone)]
-enum Message {
+#[derive(Debug, Clone, Copy)]
+pub enum Message {
     Post,
 }
 
 impl Three {
     pub fn title(&self) -> String {
-        "three".into()
+        "Three".into()
+    }
+
+    pub fn update(&mut self, message: Message) {
+        match message {
+            Message::Post => todo!(),
+        }
+    }
+
+    pub fn view(&self) -> Element<'_, Message> {
+        text(self.name.clone())
+            .size(20)
+            .color(color!(0x0000ff))
+            .into()
     }
 }

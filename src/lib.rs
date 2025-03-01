@@ -1,13 +1,18 @@
 pub mod back;
 pub mod front;
 
+use crate::front::app;
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use bytes::Bytes;
 use ed25519_dalek::Signature;
 use futures::{SinkExt, Stream};
 use futures_lite::StreamExt;
-use iced::{Subscription, stream::try_channel};
+use iced::{
+    Subscription, Task,
+    stream::try_channel,
+    widget::{self},
+};
 use iroh::{Endpoint, NodeAddr, PublicKey, SecretKey, protocol::Router};
 use iroh_blobs::net_protocol::Blobs;
 use iroh_gossip::{
@@ -18,6 +23,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Three {
+    name: String,
     pub secret_key: Option<SecretKey>,
     follows: Vec<Topic>,
     peers: Vec<NodeAddr>,
@@ -33,19 +39,24 @@ pub struct Topic {
 }
 
 impl Three {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new() -> (Self, Task<app::Message>) {
+        let name = "unset_username"; // TODO: add setter
         let secret_key = Some(SecretKey::generate(rand::rngs::OsRng));
         let my_posts = vec![];
 
         let follows = vec![];
         let peers = vec![];
 
-        Ok(Self {
-            secret_key,
-            my_posts,
-            follows,
-            peers,
-        })
+        (
+            Self {
+                name: name.to_string(),
+                secret_key,
+                my_posts,
+                follows,
+                peers,
+            },
+            widget::focus_next(),
+        )
     }
 }
 
