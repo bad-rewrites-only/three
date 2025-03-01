@@ -1,6 +1,8 @@
+use three::Three;
+use three::front::app::*;
+
 use clap::Parser;
 use iroh_gossip::proto::TopicId;
-use three::Three;
 
 #[derive(Parser, Debug)]
 struct Args {

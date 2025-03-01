@@ -1,3 +1,6 @@
+pub mod back;
+pub mod front;
+
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use bytes::Bytes;
@@ -12,9 +15,6 @@ use iroh_gossip::{
     proto::TopicId,
 };
 use serde::{Deserialize, Serialize};
-
-pub mod app;
-pub mod back;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Three {
