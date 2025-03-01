@@ -11,6 +11,7 @@ bytes = "1.10.0"
 clap = { version = "4.5.30", features = ["derive"] }
 console_error_panic_hook = "0.1.7"
 data-encoding = "2.8.0"
+dirs = "6.0.0"
 ed25519-dalek = "2.1.1"
 eframe = { version = "0.31.0", features = [
   "default_fonts",
@@ -35,3 +36,4 @@ qrc = "0.0.5"
 rand = "0.8.5"
 serde = { version = "1.0.218", features = ["derive"] }
 tokio = { version = "1.43.0", features = ["full"] }
+toml = "0.8.20"
