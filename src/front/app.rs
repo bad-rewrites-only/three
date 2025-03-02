@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use crate::Three;
-
-use iced::Subscription;
 use iced::Task;
 use iced::{
     Center, Element, color,
     widget::{Column, button, center, column, text, text_input},
 };
+use iroh::protocol::Router;
+use log::debug;
+
+use crate::Three;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
@@ -18,6 +19,7 @@ pub enum Screen {
 #[derive(Debug, Clone)]
 pub enum Message {
     Init,
+    InitDone(Router),
     NameChanged(String),
     NextPressed,
     Post,
@@ -37,8 +39,12 @@ impl Three {
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        debug!("update: {message:?}");
         match message {
-            Message::Init => todo!(),
+            Message::Init => {
+                Task::perform(Three::iroh_init(self.secret_key.clone()), Message::InitDone)
+            }
+            Message::InitDone(_) => Task::none(),
             Message::NameChanged(name) => (self.name = name).into(),
             //Message::NextPressed => {
             //    if let Some(screen) = self.screen.next() {

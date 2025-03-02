@@ -9,6 +9,7 @@ in rec {
   # https://devenv.sh/basics/
   env.LD_LIBRARY_PATH = "${lib.makeLibraryPath packages}";
   # env.RUST_FLAG = "'--cfg getrandom_backend=\"wasm_js\"";
+  env.RUST_LOG = "three=trace";
 
   # https://devenv.sh/packages/
   packages = with pkgs-unstable; [

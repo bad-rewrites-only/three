@@ -44,8 +44,7 @@ impl Three {
         let peers = vec![];
         let my_posts = vec![];
         let three = Self {
-            screen: Screen::Welcome,
-            name: "".into(),
+            name,
             secret_key: secret_key.clone(),
             follows,
             peers,
@@ -57,24 +56,26 @@ impl Three {
             Task::done(Message::Init), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
         )
     }
-    async fn iroh_init(&mut self, secret_key: SecretKey) -> anyhow::Result<()> {
+    async fn iroh_init(secret_key: SecretKey) -> Router {
         let endpoint = Endpoint::builder()
             .secret_key(secret_key)
             .discovery_n0()
             .bind()
-            .await?;
+            .await
+            .unwrap();
         let blobs = Blobs::memory().build(&endpoint);
-        let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
+        let gossip = Gossip::builder().spawn(endpoint.clone()).await.unwrap();
         let router = Router::builder(endpoint.clone())
             .accept(iroh_blobs::ALPN, blobs.clone())
             .accept(iroh_gossip::ALPN, gossip.clone())
             .spawn()
-            .await?;
+            .await
+            .unwrap();
         // let blobs_client = blobs.client();
 
         let topic = TopicId::from_bytes(rand::random());
         let ticket = {
-            let me = endpoint.node_addr().await?;
+            let me = endpoint.node_addr().await.unwrap();
             let peers = vec![].iter().cloned().chain([me]).collect();
             Ticket { topic, peers }
         };
@@ -82,10 +83,10 @@ impl Three {
 
         let node_id = router.endpoint().node_id();
 
-        // router.shutdown().await?;
-        self.router = Some(router);
+        // router.shutdown().await.unwrap();
+        // self.router = Some(router);
 
-        Ok(())
+        router
     }
 }
 

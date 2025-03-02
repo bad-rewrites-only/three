@@ -14,16 +14,11 @@ struct Args {
     command: Command,
 }
 
-#[derive(Parser, Debug, Default)]
+#[derive(Parser, Debug)]
 enum Command {
-    #[default]
     Run,
-    Open {
-        topic: Option<TopicId>,
-    },
-    Join {
-        ticket: String,
-    },
+    Open { topic: Option<TopicId> },
+    Join { ticket: String },
 }
 
 #[tokio::main]
