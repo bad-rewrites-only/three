@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::Three;
 
 use iced::Subscription;
@@ -20,7 +22,7 @@ pub enum Message {
     NextPressed,
     Post,
     Refresh,
-    Refreshed(Result<(), anyhow::Error>),
+    Refreshed(Arc<Result<(), anyhow::Error>>),
     Closed,
 }
 
