@@ -135,7 +135,7 @@ impl Three {
                 .spacing(20)
                 .padding(20)
                 .into(),
-            Screen::Code => column![screen, qr, controls]
+            Screen::Code => column![screen, qr, screen_selector]
                 .max_width(540)
                 .spacing(20)
                 .padding(20)
