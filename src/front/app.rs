@@ -1,14 +1,17 @@
-use crate::Three;
 use crate::front::screen::Screen;
+use crate::{Three, Ticket, Topic};
 
+use std::str::FromStr;
 use std::sync::Arc;
 
+use eframe::egui::accesskit::NodeId;
 use iced::{
     Center, Element, Task, color,
     widget::{Column, button, center, column, row, text, text_input},
 };
 use iroh::{Endpoint, protocol::Router};
-use iroh_gossip::net::Gossip;
+use iroh_gossip::net::{Gossip, GossipReceiver, GossipSender, GossipTopic};
+use iroh_gossip::proto::TopicId;
 use log::debug;
 
 #[derive(Debug, Clone)]
@@ -16,6 +19,9 @@ pub enum Message {
     Init,
     InitDone((Endpoint, Gossip, Router)),
     SelectPage(Screen),
+    FriendInput(String),
+    FriendSubmit,
+    SubscribeTopic(Arc<(GossipSender, GossipReceiver)>),
     NameChanged(String),
     NextPressed,
     Post,
@@ -40,7 +46,7 @@ impl Three {
             }
             Message::InitDone((endpoint, gossip, router)) => {
                 self.enpoint = Some(endpoint);
-                self.gossip = Some(gossip);
+                // self.gossip.replace(gossip);
                 self.router = Some(router);
             }
             Message::NameChanged(name) => {
@@ -59,6 +65,22 @@ impl Three {
             Message::Refresh => todo!(),
             Message::Refreshed(_) => todo!(),
             Message::Closed => todo!(),
+            Message::FriendInput(friend) => self.friend_input = friend,
+            Message::FriendSubmit => {
+                let Ticket { topic, peers } = Ticket::from_str(&self.friend_input).unwrap();
+                self.friend_input.clear();
+
+                // let peer_ids = peers.iter().map(|p| p.node_id).collect();
+
+                // task = Task::perform(
+                //     self.gossip.unwrap().subscribe_and_join(topic, peer_ids),
+                //     |gt| {
+                //         let (sender, receiver) = gt.unwrap().split();
+                //         Message::SubscribeTopic(Arc::new((sender, receiver)))
+                //     },
+                // )
+            }
+            Message::SubscribeTopic(arc) => {}
         }
 
         task
@@ -122,20 +144,19 @@ impl Three {
     }
 
     fn view_friends(&self) -> Column<Message> {
-        let friends_input = text_input(
-            "friendless",
-            self.friends
-                .iter()
-                .map(|f| format!("{f:?}"))
-                .collect::<Vec<String>>()
-                .join(",")
-                .as_str(),
-        );
-        // if self.friends.is_empty() {
-        //     text("waiting for friends...")
-        // } else {
-        // }
+        let friends = self
+            .topics
+            .iter()
+            .map(|f| format!("{f:?}"))
+            .chain([self.friend_input.clone()])
+            .collect::<Vec<String>>()
+            .join(", ");
 
-        column![friends_input]
+        let friends_input = text_input("friendless", &friends)
+            .on_input(Message::FriendInput)
+            .on_submit(Message::FriendSubmit);
+        let submit = button("add").on_press(Message::FriendSubmit);
+
+        column![friends_input, submit]
     }
 }

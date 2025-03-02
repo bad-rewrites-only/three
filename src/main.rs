@@ -29,6 +29,7 @@ fn main() -> anyhow::Result<()> {
     // args.command = Command::Run;
     let comm = Command::Run;
     // match args.command {
+
     match comm {
         Command::Run => iced::application(Three::title, Three::update, Three::view)
             .run_with(Three::new)

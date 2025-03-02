@@ -1,9 +1,11 @@
+#![allow(unused)]
+
 pub mod back;
 pub mod front;
 
 use front::{app::Message, screen::Screen};
 
-use std::{collections::HashMap, fmt, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
 
 use bytes::Bytes;
 use ed25519_dalek::Signature;
@@ -13,7 +15,7 @@ use iced::{Subscription, Task, stream::try_channel};
 use iroh::{Endpoint, NodeAddr, PublicKey, SecretKey, protocol::Router};
 use iroh_blobs::net_protocol::Blobs;
 use iroh_gossip::{
-    net::{Event, Gossip, GossipEvent, GossipReceiver},
+    net::{Event, Gossip, GossipEvent, GossipReceiver, GossipSender},
     proto::TopicId,
 };
 use serde::{Deserialize, Serialize};
@@ -21,22 +23,24 @@ use serde::{Deserialize, Serialize};
 pub struct Three {
     screen: Screen,
     name: String,
-    friends: Vec<Topic>,
-    peers: Vec<NodeAddr>,
     my_posts: Vec<String>,
 
+    // temporaries
+    friend_input: String,
+
+    // iroh stuff
     secret_key: SecretKey,
-    gossip: Option<Gossip>,
+    topics: Vec<TopicId>,
+    peers: Vec<NodeAddr>,
+    gossip: Arc<Option<Gossip>>,
     router: Option<Router>,
     enpoint: Option<Endpoint>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
 pub struct Topic {
     topic_id: TopicId,
-
-    #[serde(skip)]
-    receiver: Option<GossipReceiver>,
+    receiver: GossipReceiver,
+    sender: GossipSender,
 }
 
 impl Three {
@@ -49,12 +53,13 @@ impl Three {
             name: "".into(),
             screen: Screen::Welcome,
             secret_key: secret_key.clone(),
-            friends: follows,
+            topics: follows,
             peers,
             my_posts,
             router: None,
-            gossip: None,
+            gossip: Arc::new(None),
             enpoint: None,
+            friend_input: String::new(),
         };
         (three, Task::done(Message::Init))
     }
