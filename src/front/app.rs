@@ -1,18 +1,23 @@
+use crate::front::qrcode::Code;
 use crate::front::screen::Screen;
 use crate::{Three, Ticket, Topic};
-
 use std::str::FromStr;
 use std::sync::Arc;
 
 use eframe::egui::accesskit::NodeId;
+use iced::Renderer;
 use iced::{
-    Center, Element, Task, color,
-    widget::{Column, button, center, column, row, text, text_input},
+    Center, Element, Task, Theme, color,
+    widget::{Column, QRCode, button, center, column, image, qr_code, row, text, text_input},
 };
+
+use ::image::imageops;
 use iroh::{Endpoint, protocol::Router};
 use iroh_gossip::net::{Gossip, GossipReceiver, GossipSender, GossipTopic};
 use iroh_gossip::proto::TopicId;
 use log::debug;
+
+use super::qrcode;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -98,7 +103,7 @@ impl Three {
         let screen = match self.screen {
             Screen::Welcome => self.welcome(),
             Screen::Feed => self.feed(),
-            Screen::Code => todo!(),
+            Screen::Code => self.code(),
             Screen::Stats => todo!(),
             Screen::Friends => self.view_friends(),
         };
@@ -122,18 +127,25 @@ impl Three {
             button("stat").on_press(Message::SelectPage(Screen::Stats))
         ];
 
-        let content: Element<_> = if self.screen != Screen::Welcome {
-            column![screen, controls, screen_selector]
+        let qr = qr_code(&Code::new("test_str").qr_code).into();
+
+        let code = Code::new("test_str");
+        let content: Element<_> = match self.screen {
+            Screen::Welcome => column![screen, controls]
                 .max_width(540)
                 .spacing(20)
                 .padding(20)
-                .into()
-        } else {
-            column![screen, controls /*, page_selector*/]
+                .into(),
+            Screen::Code => column![screen, qr, controls]
                 .max_width(540)
                 .spacing(20)
                 .padding(20)
-                .into()
+                .into(),
+            _ => column![screen, controls, screen_selector]
+                .max_width(540)
+                .spacing(20)
+                .padding(20)
+                .into(),
         };
 
         content
@@ -145,6 +157,10 @@ impl Three {
 
     fn feed(&self) -> Column<Message> {
         Self::container("Feed").push("TODO: Feed")
+    }
+
+    fn code(&self) -> Column<'_, Message> {
+        Self::container("Code").push("TODO: Code")
     }
 
     fn container(title: &str) -> Column<'_, Message> {

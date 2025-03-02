@@ -21,9 +21,7 @@ eframe = { version = "0.31.0", features = [
 env_logger = "0.11.6"
 futures = "0.3.31"
 futures-lite = "2.6.0"
-iced = { git = "https://github.com/iced-rs/iced.git", rev = "beddf49", features = [
-  "tokio",
-] }
+iced = { git = "https://github.com/iced-rs/iced.git", rev = "beddf49", features = ["image", "qr_code", "tokio"] }
 image = "0.24.9"
 iroh = { version = "0.33.0", default-features = false }
 iroh-base = { version = "0.33", default-features = false, features = [
