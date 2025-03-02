@@ -25,7 +25,7 @@ pub struct Three {
     name: String,
     my_posts: Vec<String>,
     theme: Theme,
-    pub qr_tmp: Code,
+    pub qr_code: Code,
 
     // temporaries
     friend_input: String,
@@ -63,7 +63,7 @@ impl Three {
             enpoint: None,
             friend_input: String::new(),
             theme: Theme::Dark,
-            qr_tmp: Code::new("test"),
+            qr_code: Code::new("test"),
         };
         (three, Task::done(Message::Init))
     }

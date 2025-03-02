@@ -1,23 +1,19 @@
-use crate::front::qrcode::Code;
-use crate::front::screen::Screen;
-use crate::{Three, Ticket, Topic};
+use crate::{
+    front::{qrcode::Code, screen::Screen},
+    {Three, Ticket, Topic},
+};
+
 use std::str::FromStr;
 use std::sync::Arc;
 
-use eframe::egui::accesskit::NodeId;
-use iced::Renderer;
 use iced::{
     Center, Element, Task, Theme, color,
-    widget::{Column, QRCode, button, center, column, image, qr_code, row, text, text_input},
+    widget::{Column, button, center, column, qr_code, row, text, text_input},
 };
-
-use ::image::imageops;
 use iroh::{Endpoint, protocol::Router};
 use iroh_gossip::net::{Gossip, GossipReceiver, GossipSender, GossipTopic};
 use iroh_gossip::proto::TopicId;
 use log::debug;
-
-use super::qrcode;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -45,33 +41,34 @@ impl Three {
 
         let mut task = Task::none();
 
+        use Message::*;
         match message {
-            Message::Init => {
+            Init => {
                 task = Task::perform(Three::iroh_init(self.secret_key.clone()), Message::InitDone)
             }
-            Message::InitDone((endpoint, gossip, router)) => {
+            InitDone((endpoint, gossip, router)) => {
                 self.enpoint = Some(endpoint);
                 // self.gossip.replace(gossip);
                 self.router = Some(router);
             }
-            Message::NameChanged(name) => {
+            NameChanged(name) => {
                 (self.name = name);
             }
-            Message::NextPressed => {
+            NextPressed => {
                 if let Some(screen) = self.screen.next() {
                     debug!("next screen: {screen:?}");
                     (self.screen = screen);
                 }
             }
-            Message::SelectPage(screen) => {
+            SelectPage(screen) => {
                 self.screen = screen;
             }
-            Message::Post => todo!(),
-            Message::Refresh => todo!(),
-            Message::Refreshed(_) => todo!(),
-            Message::Closed => todo!(),
-            Message::FriendInput(friend) => self.friend_input = friend,
-            Message::FriendSubmit => {
+            Post => todo!(),
+            Refresh => todo!(),
+            Refreshed(_) => todo!(),
+            Closed => todo!(),
+            FriendInput(friend) => self.friend_input = friend,
+            FriendSubmit => {
                 let Ticket { topic, peers } = Ticket::from_str(&self.friend_input).unwrap();
                 self.friend_input.clear();
 
@@ -85,7 +82,7 @@ impl Three {
                 //     },
                 // )
             }
-            Message::SubscribeTopic(arc) => {}
+            SubscribeTopic(arc) => {}
         }
 
         task
@@ -100,12 +97,13 @@ impl Three {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
+        use Screen::*;
         let screen = match self.screen {
-            Screen::Welcome => self.welcome(),
-            Screen::Feed => self.feed(),
-            Screen::Code => self.code(),
-            Screen::Stats => todo!(),
-            Screen::Friends => self.view_friends(),
+            Welcome => self.welcome(),
+            Feed => self.feed(),
+            Code => self.code(),
+            Stats => todo!(),
+            Friends => self.view_friends(),
         };
 
         let controls = row![]
@@ -120,14 +118,15 @@ impl Three {
                     .then(|| button("Next").on_press(Message::NextPressed)),
             );
 
+        use Message::*;
         let screen_selector = row![
-            button("Feed").on_press(Message::SelectPage(Screen::Feed)),
-            button("code").on_press(Message::SelectPage(Screen::Code)),
-            button("Friends").on_press(Message::SelectPage(Screen::Friends)),
-            button("stat").on_press(Message::SelectPage(Screen::Stats))
+            button("Feed").on_press(SelectPage(Screen::Feed)),
+            button("Code").on_press(SelectPage(Screen::Code)),
+            button("Friends").on_press(SelectPage(Screen::Friends)),
+            button("stat").on_press(SelectPage(Screen::Stats))
         ];
 
-        let qr = qr_code(&self.qr_tmp.qr_code_data);
+        let qr = qr_code(&self.qr_code.data);
 
         let content: Element<_> = match self.screen {
             Screen::Welcome => column![screen, controls]

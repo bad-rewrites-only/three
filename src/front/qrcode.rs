@@ -1,26 +1,18 @@
 use bardecoder;
 use iced::widget::qr_code;
-use image::{self, DynamicImage};
-use image::{ImageBuffer, Rgba};
-//use qrc::QRCode;
-//use qrc::qr_code_to;
+use image::DynamicImage;
 
 pub struct Code {
     topic_id: String,
-    //pub qr_code: ImageBuffer<Rgba<u8>, Vec<u8>>,
-    pub qr_code_data: qr_code::Data,
+    pub data: qr_code::Data,
 }
 
 impl Code {
     /// Convert the QRCode into a PNG representation
     pub fn new(topic_id: &str) -> Code {
-        //Code {
-        //    topic_id: topic_id.to_string(),
-        //    image: qr_code_to!(topic_id.into(), "png", 512),
-        //}
         Code {
             topic_id: topic_id.to_string(),
-            qr_code_data: qr_code::Data::new(topic_id).expect("invalid topic_id"),
+            data: qr_code::Data::new(topic_id).expect("invalid topic_id"),
         }
     }
 
