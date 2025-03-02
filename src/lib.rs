@@ -16,15 +16,16 @@ use iroh_gossip::{
 };
 use serde::{Deserialize, Serialize};
 
-use front::app;
+use front::app::{self, Message};
 
-#[derive(Default, Serialize, Deserialize)]
 pub struct Three {
     name: String,
     pub secret_key: Option<SecretKey>,
     follows: Vec<Topic>,
     peers: Vec<NodeAddr>,
     my_posts: Vec<String>,
+
+    router: Option<Router>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -36,56 +37,49 @@ pub struct Topic {
 }
 
 impl Three {
-    pub fn new() -> (Self, Task<app::Message>) {
+    pub fn new() -> (Self, Task<Message>) {
         let name = "username".into();
-
         let secret_key = Some(SecretKey::generate(rand::rngs::OsRng));
-        let my_posts = vec![];
-
-        let follows = vec![];
-        let peers = vec![];
-
+        let three = Self {
+            name,
+            secret_key,
+            ..Default::default()
+        };
         (
-            Self {
-                name,
-                secret_key,
-                my_posts,
-                follows,
-                peers,
-            },
-            Task::none(),
+            three,
+            Task::perform(three.iroh_init(secret_key), Message::Refreshed),
         )
     }
-}
+    async fn iroh_init(&mut self, secret_key: Box<SecretKey>) -> anyhow::Result<()> {
+        let endpoint = Endpoint::builder()
+            .secret_key(*secret_key)
+            .discovery_n0()
+            .bind()
+            .await?;
+        let blobs = Blobs::memory().build(&endpoint);
+        let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
+        let router = Router::builder(endpoint.clone())
+            .accept(iroh_blobs::ALPN, blobs.clone())
+            .accept(iroh_gossip::ALPN, gossip.clone())
+            .spawn()
+            .await?;
+        // let blobs_client = blobs.client();
 
-async fn iroh_init(secret_key: Box<SecretKey>) -> anyhow::Result<()> {
-    let endpoint = Endpoint::builder()
-        .secret_key(*secret_key)
-        .discovery_n0()
-        .bind()
-        .await?;
-    let blobs = Blobs::memory().build(&endpoint);
-    let gossip = Gossip::builder().spawn(endpoint.clone()).await?;
-    let router = Router::builder(endpoint.clone())
-        .accept(iroh_blobs::ALPN, blobs.clone())
-        .accept(iroh_gossip::ALPN, gossip.clone())
-        .spawn()
-        .await?;
-    // let blobs_client = blobs.client();
+        let topic = TopicId::from_bytes(rand::random());
+        let ticket = {
+            let me = endpoint.node_addr().await?;
+            let peers = vec![].iter().cloned().chain([me]).collect();
+            Ticket { topic, peers }
+        };
+        println!("> ticket to join us: {ticket}");
 
-    let topic = TopicId::from_bytes(rand::random());
-    let ticket = {
-        let me = endpoint.node_addr().await?;
-        let peers = vec![].iter().cloned().chain([me]).collect();
-        Ticket { topic, peers }
-    };
-    println!("> ticket to join us: {ticket}");
+        let node_id = router.endpoint().node_id();
 
-    let node_id = router.endpoint().node_id();
+        // router.shutdown().await?;
+        self.router = Some(router);
 
-    router.shutdown().await?;
-
-    Ok(())
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
