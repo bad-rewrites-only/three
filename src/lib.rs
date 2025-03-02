@@ -46,15 +46,15 @@ impl Three {
 
         let three = Self {
             name,
-            secret_key,
+            secret_key: secret_key.clone(),
             follows,
             peers,
             my_posts,
-            router: todo!(),
+            router: None,
         };
         (
             three,
-            Task::perform(three.iroh_init(three.secret_key), Message::Refreshed),
+            Task::done(Message::Init), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
         )
     }
     async fn iroh_init(&mut self, secret_key: SecretKey) -> anyhow::Result<()> {

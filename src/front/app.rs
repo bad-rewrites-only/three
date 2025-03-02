@@ -8,7 +8,9 @@ use crate::Three;
 
 #[derive(Debug)]
 pub enum Message {
+    Init,
     Post,
+    Refresh,
     Refreshed(Result<(), anyhow::Error>),
     Closed,
 }
@@ -18,12 +20,16 @@ impl Three {
         "Three".into()
     }
 
-    pub fn update(&mut self, message: Message)
-    // -> Task<Message>
-    {
+    pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::Init => {
+                todo!()
+            }
             Message::Post => todo!(),
             // Message::Startup => Task::perform(),
+            Message::Refresh => {
+                todo!()
+            }
             _ => todo!(),
         }
     }
