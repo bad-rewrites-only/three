@@ -32,6 +32,7 @@ fn main() -> anyhow::Result<()> {
 
     match comm {
         Command::Run => iced::application(Three::title, Three::update, Three::view)
+            .theme(Three::theme)
             .run_with(Three::new)
             .unwrap(),
         Command::Open { topic } => todo!(),

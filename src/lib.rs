@@ -3,7 +3,7 @@
 pub mod back;
 pub mod front;
 
-use front::{app::Message, screen::Screen};
+use front::{app::Message, qrcode::Code, screen::Screen};
 
 use std::{collections::HashMap, fmt, str::FromStr, sync::Arc};
 
@@ -11,7 +11,7 @@ use bytes::Bytes;
 use ed25519_dalek::Signature;
 use futures::{SinkExt, Stream};
 use futures_lite::StreamExt;
-use iced::{Subscription, Task, stream::try_channel};
+use iced::{Subscription, Task, Theme, stream::try_channel};
 use iroh::{Endpoint, NodeAddr, PublicKey, SecretKey, protocol::Router};
 use iroh_blobs::net_protocol::Blobs;
 use iroh_gossip::{
@@ -24,6 +24,8 @@ pub struct Three {
     screen: Screen,
     name: String,
     my_posts: Vec<String>,
+    theme: Theme,
+    pub qr_tmp: Code,
 
     // temporaries
     friend_input: String,
@@ -60,6 +62,8 @@ impl Three {
             gossip: Arc::new(None),
             enpoint: None,
             friend_input: String::new(),
+            theme: Theme::Dark,
+            qr_tmp: Code::new("test"),
         };
         (three, Task::done(Message::Init))
     }

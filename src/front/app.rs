@@ -127,9 +127,8 @@ impl Three {
             button("stat").on_press(Message::SelectPage(Screen::Stats))
         ];
 
-        let qr = qr_code(&Code::new("test_str").qr_code).into();
+        let qr = qr_code(&self.qr_tmp.qr_code_data);
 
-        let code = Code::new("test_str");
         let content: Element<_> = match self.screen {
             Screen::Welcome => column![screen, controls]
                 .max_width(540)
@@ -182,5 +181,9 @@ impl Three {
         let submit = button("add").on_press(Message::FriendSubmit);
 
         column![friends_input, submit]
+    }
+
+    pub fn theme(&self) -> Theme {
+        self.theme.clone()
     }
 }

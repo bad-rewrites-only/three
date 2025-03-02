@@ -8,7 +8,7 @@ use image::{ImageBuffer, Rgba};
 pub struct Code {
     topic_id: String,
     //pub qr_code: ImageBuffer<Rgba<u8>, Vec<u8>>,
-    pub qr_code: qr_code::Data,
+    pub qr_code_data: qr_code::Data,
 }
 
 impl Code {
@@ -20,7 +20,7 @@ impl Code {
         //}
         Code {
             topic_id: topic_id.to_string(),
-            qr_code: qr_code::Data::new(topic_id).expect("invalid topic_id"),
+            qr_code_data: qr_code::Data::new(topic_id).expect("invalid topic_id"),
         }
     }
 
