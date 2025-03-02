@@ -21,15 +21,17 @@ use serde::{Deserialize, Serialize};
 pub struct Three {
     screen: Screen,
     name: String,
-    secret_key: SecretKey,
-    follows: Vec<Topic>,
+    friends: Vec<Topic>,
     peers: Vec<NodeAddr>,
     my_posts: Vec<String>,
 
+    secret_key: SecretKey,
+    gossip: Option<Gossip>,
     router: Option<Router>,
+    enpoint: Option<Endpoint>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Topic {
     topic_id: TopicId,
 
@@ -44,21 +46,19 @@ impl Three {
         let peers = vec![];
         let my_posts = vec![];
         let three = Self {
-            screen: Screen::Welcome,
             name: "".into(),
+            screen: Screen::Welcome,
             secret_key: secret_key.clone(),
-            follows,
+            friends: follows,
             peers,
             my_posts,
             router: None,
+            gossip: None,
+            enpoint: None,
         };
-        (
-            three,
-            //Task::done(Message::Init), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
-            Task::none(), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
-        )
+        (three, Task::done(Message::Init))
     }
-    async fn iroh_init(secret_key: SecretKey) -> Router {
+    async fn iroh_init(secret_key: SecretKey) -> (Endpoint, Gossip, Router) {
         let endpoint = Endpoint::builder()
             .secret_key(secret_key)
             .discovery_n0()
@@ -88,7 +88,7 @@ impl Three {
         // router.shutdown().await.unwrap();
         // self.router = Some(router);
 
-        router
+        (endpoint, gossip, router)
     }
 }
 

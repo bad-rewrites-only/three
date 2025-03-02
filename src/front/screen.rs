@@ -1,7 +1,12 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use strum::Display;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum Screen {
     Welcome,
     Feed,
+    Code,
+    Friends,
+    Stats,
 }
 
 impl Screen {

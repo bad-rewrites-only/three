@@ -7,13 +7,15 @@ use iced::{
     Center, Element, Task, color,
     widget::{Column, button, center, column, row, text, text_input},
 };
-use iroh::protocol::Router;
+use iroh::{Endpoint, protocol::Router};
+use iroh_gossip::net::Gossip;
 use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Init,
-    InitDone(Router),
+    InitDone((Endpoint, Gossip, Router)),
+    SelectPage(Screen),
     NameChanged(String),
     NextPressed,
     Post,
@@ -24,44 +26,49 @@ pub enum Message {
 
 impl Three {
     pub fn title(&self) -> String {
-        let screen = match self.screen {
-            Screen::Welcome => "Welcome",
-            Screen::Feed => "Feed",
-        };
-
-        format!("{} - Iced", screen)
+        format!("{} - Iced", self.screen)
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         debug!("update: {message:?}");
+
+        let mut task = Task::none();
+
         match message {
             Message::Init => {
-                Task::perform(Three::iroh_init(self.secret_key.clone()), Message::InitDone)
+                task = Task::perform(Three::iroh_init(self.secret_key.clone()), Message::InitDone)
             }
-            Message::InitDone(_) => Task::none(),
+            Message::InitDone((endpoint, gossip, router)) => {
+                self.enpoint = Some(endpoint);
+                self.gossip = Some(gossip);
+                self.router = Some(router);
+            }
             Message::NameChanged(name) => {
                 (self.name = name);
-                ().into()
             }
             Message::NextPressed => {
                 if let Some(screen) = self.screen.next() {
                     debug!("next screen: {screen:?}");
                     (self.screen = screen);
                 }
-                Task::none()
             }
-
-            //Message::Post => todo!(),
-            //Message::Startup => Task::perform(),
-            //Message::Refresh => todo!(),
-            _ => Task::none(),
+            Message::SelectPage(screen) => {
+                self.screen = screen;
+            }
+            Message::Post => todo!(),
+            Message::Refresh => todo!(),
+            Message::Refreshed(_) => todo!(),
+            Message::Closed => todo!(),
         }
+
+        task
     }
 
     fn can_continue(&self) -> bool {
         match self.screen {
             Screen::Welcome => true,
             Screen::Feed => false,
+            _ => true,
         }
     }
 
@@ -81,9 +88,19 @@ impl Three {
         let screen = match self.screen {
             Screen::Welcome => self.welcome(),
             Screen::Feed => self.feed(),
+            Screen::Code => todo!(),
+            Screen::Stats => todo!(),
+            Screen::Friends => self.view_friends(),
         };
 
-        let content: Element<_> = column![screen, controls,]
+        let page_selector = row![
+            button("feed").on_press(Message::SelectPage(Screen::Feed)),
+            button("code").on_press(Message::SelectPage(Screen::Code)),
+            button("fren").on_press(Message::SelectPage(Screen::Friends)),
+            button("stat").on_press(Message::SelectPage(Screen::Stats))
+        ];
+
+        let content: Element<_> = column![screen, controls, page_selector]
             .max_width(540)
             .spacing(20)
             .padding(20)
@@ -102,5 +119,23 @@ impl Three {
 
     fn container(title: &str) -> Column<'_, Message> {
         column![text(title).size(50)].spacing(20)
+    }
+
+    fn view_friends(&self) -> Column<Message> {
+        let friends_input = text_input(
+            "friendless",
+            self.friends
+                .iter()
+                .map(|f| format!("{f:?}"))
+                .collect::<Vec<String>>()
+                .join(",")
+                .as_str(),
+        );
+        // if self.friends.is_empty() {
+        //     text("waiting for friends...")
+        // } else {
+        // }
+
+        column![friends_input]
     }
 }

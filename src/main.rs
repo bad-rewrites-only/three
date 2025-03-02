@@ -21,11 +21,15 @@ enum Command {
     Join { ticket: String },
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+// #[tokio::main]
+// async
+fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let args = Args::parse();
-    match args.command {
+    // let mut args = Args::parse();
+    // args.command = Command::Run;
+    let comm = Command::Run;
+    // match args.command {
+    match comm {
         Command::Run => iced::application(Three::title, Three::update, Three::view)
             .run_with(Three::new)
             .unwrap(),
