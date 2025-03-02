@@ -16,9 +16,10 @@ use iroh_gossip::{
 };
 use serde::{Deserialize, Serialize};
 
-use front::app::{self, Message};
+use front::app::{self, Message, Screen};
 
 pub struct Three {
+    screen: app::Screen,
     name: String,
     secret_key: SecretKey,
     follows: Vec<Topic>,
@@ -38,14 +39,13 @@ pub struct Topic {
 
 impl Three {
     pub fn new() -> (Self, Task<Message>) {
-        let name = "username".into();
         let secret_key = SecretKey::generate(rand::rngs::OsRng);
         let follows = vec![];
         let peers = vec![];
         let my_posts = vec![];
-
         let three = Self {
-            name,
+            screen: Screen::Welcome,
+            name: "".into(),
             secret_key: secret_key.clone(),
             follows,
             peers,
