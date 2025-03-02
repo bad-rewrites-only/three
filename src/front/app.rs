@@ -95,6 +95,14 @@ impl Three {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
+        let screen = match self.screen {
+            Screen::Welcome => self.welcome(),
+            Screen::Feed => self.feed(),
+            Screen::Code => todo!(),
+            Screen::Stats => todo!(),
+            Screen::Friends => self.view_friends(),
+        };
+
         let controls = row![]
             .push_maybe((self.screen == Screen::Welcome).then(|| {
                 text_input("Enter name...", &self.name)
@@ -107,26 +115,26 @@ impl Three {
                     .then(|| button("Next").on_press(Message::NextPressed)),
             );
 
-        let screen = match self.screen {
-            Screen::Welcome => self.welcome(),
-            Screen::Feed => self.feed(),
-            Screen::Code => todo!(),
-            Screen::Stats => todo!(),
-            Screen::Friends => self.view_friends(),
-        };
-
-        let page_selector = row![
-            button("feed").on_press(Message::SelectPage(Screen::Feed)),
+        let screen_selector = row![
+            button("Feed").on_press(Message::SelectPage(Screen::Feed)),
             button("code").on_press(Message::SelectPage(Screen::Code)),
-            button("fren").on_press(Message::SelectPage(Screen::Friends)),
+            button("Friends").on_press(Message::SelectPage(Screen::Friends)),
             button("stat").on_press(Message::SelectPage(Screen::Stats))
         ];
 
-        let content: Element<_> = column![screen, controls, page_selector]
-            .max_width(540)
-            .spacing(20)
-            .padding(20)
-            .into();
+        let content: Element<_> = if self.screen != Screen::Welcome {
+            column![screen, controls, screen_selector]
+                .max_width(540)
+                .spacing(20)
+                .padding(20)
+                .into()
+        } else {
+            column![screen, controls /*, page_selector*/]
+                .max_width(540)
+                .spacing(20)
+                .padding(20)
+                .into()
+        };
 
         content
     }
