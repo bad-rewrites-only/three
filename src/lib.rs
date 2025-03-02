@@ -1,6 +1,8 @@
 pub mod back;
 pub mod front;
 
+use front::{app::Message, screen::Screen};
+
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use bytes::Bytes;
@@ -16,10 +18,8 @@ use iroh_gossip::{
 };
 use serde::{Deserialize, Serialize};
 
-use front::app::{self, Message, Screen};
-
 pub struct Three {
-    screen: app::Screen,
+    screen: Screen,
     name: String,
     secret_key: SecretKey,
     follows: Vec<Topic>,
@@ -44,7 +44,8 @@ impl Three {
         let peers = vec![];
         let my_posts = vec![];
         let three = Self {
-            name,
+            screen: Screen::Welcome,
+            name: "".into(),
             secret_key: secret_key.clone(),
             follows,
             peers,
@@ -53,7 +54,8 @@ impl Three {
         };
         (
             three,
-            Task::done(Message::Init), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
+            //Task::done(Message::Init), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
+            Task::none(), // Task::perform(three.iroh_init(secret_key), Message::Refreshed),
         )
     }
     async fn iroh_init(secret_key: SecretKey) -> Router {
