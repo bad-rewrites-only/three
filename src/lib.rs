@@ -20,7 +20,7 @@ use front::app::{self, Message};
 
 pub struct Three {
     name: String,
-    pub secret_key: Option<SecretKey>,
+    secret_key: SecretKey,
     follows: Vec<Topic>,
     peers: Vec<NodeAddr>,
     my_posts: Vec<String>,
@@ -39,20 +39,27 @@ pub struct Topic {
 impl Three {
     pub fn new() -> (Self, Task<Message>) {
         let name = "username".into();
-        let secret_key = Some(SecretKey::generate(rand::rngs::OsRng));
+        let secret_key = SecretKey::generate(rand::rngs::OsRng);
+        let follows = vec![];
+        let peers = vec![];
+        let my_posts = vec![];
+
         let three = Self {
             name,
             secret_key,
-            ..Default::default()
+            follows,
+            peers,
+            my_posts,
+            router: todo!(),
         };
         (
             three,
-            Task::perform(three.iroh_init(secret_key), Message::Refreshed),
+            Task::perform(three.iroh_init(three.secret_key), Message::Refreshed),
         )
     }
-    async fn iroh_init(&mut self, secret_key: Box<SecretKey>) -> anyhow::Result<()> {
+    async fn iroh_init(&mut self, secret_key: SecretKey) -> anyhow::Result<()> {
         let endpoint = Endpoint::builder()
-            .secret_key(*secret_key)
+            .secret_key(secret_key)
             .discovery_n0()
             .bind()
             .await?;

@@ -6,10 +6,10 @@ use iced::{Subscription, Task};
 
 use crate::Three;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub enum Message {
     Post,
-    Refreshed,
+    Refreshed(Result<(), anyhow::Error>),
     Closed,
 }
 
